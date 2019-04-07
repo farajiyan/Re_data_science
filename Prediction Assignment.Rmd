@@ -1,0 +1,178 @@
+---
+title: "Prediction Assignment"
+author: "Mohammad Ali farajian"
+date: "April 7, 2019"
+output: html_document
+---
+
+Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.
+
+Data:
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+<font color='blue'>
+    
+## Code and Results
+<font color='black'>
+Packages, Libraries, Seed
+
+Installing packages, loading libraries, and setting the seed for reproduceability:
+
+install.packages("caret"),install.packages("randomForest"),install.packages("rpart"),install.packages("rpart.plot")
+```{r}
+library(caret)
+```
+
+```{r}
+library(randomForest) #Random forest for classification and regression
+```
+
+```{r}
+library(rpart) # Regressive Partitioning and Regression trees
+library(rpart.plot) # Decision Tree plot
+# setting the overall seed for reproduceability
+set.seed(1000)
+```
+
+<font color='blue'>
+    
+## Loading data sets and preliminary cleaning
+
+
+<font color='black'>
+First we want to load the data sets into R and make sure that missing values are coded correctly.
+Irrelevant variables will be deleted.
+Results will be hidden from the report for clarity and space considerations.
+
+
+```{r}
+# After saving both data sets into my working directory
+# Some missing values are coded as string "#DIV/0!" or "" or "NA" - these will be changed to NA.
+# We notice that both data sets contain columns with all missing values - these will be deleted.  
+
+# Loading the training data set into my R session replacing all missing with "NA"
+
+trainingset <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+
+# Loading the testing data set
+testingset <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+```
+
+```{r}
+# Check dimensions for number of variables and number of observations
+dim(trainingset)
+dim(testingset)
+```
+
+
+```{r}
+# Delete columns with all missing values
+trainingset<-trainingset[,colSums(is.na(trainingset)) == 0]
+testingset <-testingset[,colSums(is.na(testingset)) == 0]
+
+```
+
+```{r}
+# Some variables are irrelevant to our current project: user_name, raw_timestamp_part_1, raw_timestamp_part_,2 cvtd_timestamp, new_window, and  num_window (columns 1 to 7). We can delete these variables.
+trainingset   <-trainingset[,-c(1:7)]
+testingset <-testingset[,-c(1:7)]
+```
+
+```{r}
+# and have a look at our new datasets:
+dim(trainingset)
+dim(testingset)
+```
+
+
+<font color='blue'>
+    
+# Partitioning the training data set to allow cross-validation
+
+<font color='black'>
+
+In order to perform cross-validation, the training data set is partionned into 2 sets: subTraining (70%) and subTest (30%).
+This will be performed using random subsampling without replacement.
+
+```{r}
+traintrainset <- createDataPartition(y=trainingset$classe, p=0.70, list=FALSE)
+TrainTrainingSet <- trainingset[traintrainset, ] 
+TestTrainingSet <- trainingset[-traintrainset, ]
+
+```
+
+## A look at the Data
+
+The variable “classe” contains 5 levels: A, B, C, D and E. A plot of the outcome variable will allow us to see the frequency of each levels in the TrainTrainingSet  data set and compare one another.
+
+```{r}
+plot(TrainTrainingSet$classe, col="green", main="Barchart of levels of variable classe within the TrainTrainingSet data set", xlab="classe Level", ylab="Frequency")
+```
+
+Based on the graph above, we can see that each level frequency is within the same order of magnitude of each other. Level A is the most frequent while level D is the least frequent with about 2200 occurrences.
+<font color='blue'>
+## First prediction model: Using Decision Tree
+
+```{r}
+model1 <- rpart(classe ~ ., data=TrainTrainingSet, method="class")
+
+prediction1 <- predict(model1, TestTrainingSet, type = "class")
+
+```
+
+```{r}
+# Plot the Decision Tree
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+```
+
+```{r}
+# Test results on our TestTrainingSet data set:
+confusionMatrix(prediction1, TestTrainingSet$classe)
+```
+
+<font color='blue'>
+    
+## Second prediction model: Using Random Forest
+
+```{r}
+
+model2 <- randomForest(classe ~. , data=TrainTrainingSet, method="class")
+
+# Predicting:
+prediction2 <- predict(model2, TestTrainingSet, type = "class")
+
+```
+
+```{r}
+# Test results on TestTrainingSet data set:
+confusionMatrix(prediction2, TestTrainingSet$classe)
+
+```
+
+## Decision on which Prediction Model is better:
+
+<font color='black'>
+Random Forest algorithm performed better than Decision Trees. Accuracy for Random Forest model was 0.9944  (95% CI : (0.9921, 0.9961)) compared to Decision Tree model with Accuracy : 0.7653          
+(95% CI : (0.7543, 0.7761)) . The Random Forests model is choosen. The expected out-of-sample error is estimated at 0.0056, or 0.56%.
+<font color='blue'>
+
+## final pridict Submission
+
+<font color='black'>
+Here is the final outcome based on the Prediction Model Random Forest applied against the Testing dataset
+
+```{r}
+# predict outcome levels on the original Testing data set using Random Forest algorithm
+predictfinal <- predict(model2, testingset, type="class")
+predictfinal
+
+```
